@@ -66,7 +66,7 @@ gr.Interface(
             gr.inputs.Dropdown(['Ethnicity1', 'Ethnicity2', 'Ethnicity3'], label='Ethnicity'), 
             gr.inputs.Textbox(label='Country')],
     outputs=gr.outputs.Label(num_top_classes=2, label='Prediction'),
-    title="Autism Spectrum Disorder (ASD) Prediction",
+    title="Autism Screening Tool",
     description="Enter the responses to the 10 screening questions (A1-A10), age, gender, ethnicity, and country. The model will predict the likelihood of Autism Spectrum Disorder.",
     theme="default",
     css=css

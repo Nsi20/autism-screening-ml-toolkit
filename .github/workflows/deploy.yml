@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
           python-version: '3.10'
       
@@ -24,30 +26,4 @@ jobs:
       - name: Deploy to Hugging Face
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          python - <<EOF
-          from huggingface_hub import HfApi
-          import os
-
-          # Initialize API with token
-          api = HfApi()
-          
-          # Upload using large folder API
-          api.upload_large_folder(
-              folder_path=".",
-              repo_id="${{ github.repository_owner }}/autism-screening",
-              repo_type="space",
-              token=os.environ["HF_TOKEN"],
-              ignore_patterns=[
-                  ".*",
-                  "__pycache__",
-                  "*.pyc",
-                  ".git*",
-                  ".venv/*",
-                  "data/*",
-                  "models/*.pkl"
-              ],
-              chunk_size=1000,
-              max_workers=4
-          )
-          EOF
+        run: python scripts/deploy_to_hf.py

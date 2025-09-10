@@ -15,10 +15,11 @@ venv/
 .vscode/
 *.code-workspace
 
-# Data files (if needed)
-# data/*.csv
+# Project specific
+data/*.csv
+deploy_temp/
+temp_requirements.txt
 
 # Model files
 models/*.pkl
-models/*.joblib
 !models/.gitkeep
