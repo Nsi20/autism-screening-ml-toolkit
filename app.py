@@ -1,73 +1,43 @@
-import gradio as gr
-import joblib
-import pandas as pd
-import numpy as np
-import os
+# app.py
+import gradio as gr, joblib, pandas as pd, numpy as np, os
 
-# Model loading with better error handling
+# ---------- model ----------
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models", "calibrated_lr.pkl")
 try:
-    MODEL_PATH = os.path.join('models', 'calibrated_lr.pkl')
     model = joblib.load(MODEL_PATH)
 except FileNotFoundError:
-    raise FileNotFoundError("Model file not found. Please run the training notebook first.")
+    raise SystemExit("Model not found – be sure to upload calibrated_lr.pkl into the models/ folder")
 
-# Define the Gradio interface
-def predict_autism(features):
-    # Convert the features into a DataFrame
-    features_df = pd.DataFrame([features], columns=[f'A{i}' for i in range(1, 11)] + ['age', 'gender', 'ethnicity', 'country'])
-    
-    # Ensure the columns are in the right order
-    features_df = features_df[[f'A{i}' for i in range(1, 11)] + ['age', 'gender', 'ethnicity', 'country']]
-    
-    # Make the prediction
-    prediction = model.predict(features_df)
-    
-    return 'ASD' if prediction[0] == 1 else 'No ASD'
+# ---------- helpers ----------
+A_COLS   = [f"A{i}_Score" for i in range(1, 11)]
+CAT_COLS = ["age", "gender", "jaundice", "austim", "contry_of_res", "used_app_before", "relation"]
 
-# Improved CSS for the Gradio interface
+def predict(*vals):
+    X = pd.DataFrame([vals], columns=A_COLS + CAT_COLS)
+    prob = float(model.predict_proba(X)[0, 1])
+    label = "High risk – consider referral" if prob >= 0.7 else "Low risk"
+    return f"{label} (probability {prob:.1%})"
+
+# ---------- Gradio UI ----------
 css = """
-.gradio-container {
-    font-family: 'Arial', sans-serif;
-    background-color: #f4f4f9;
-    color: #333;
-}
-
-.gradio-button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    padding: 10px 20px;
-    font-size: 16px;
-}
-
-.gradio-button:hover {
-    background-color: #0056b3;
-}
-
-.gradio-input {
-    border: 1px solid #ced4da;
-    border-radius: 5px;
-    padding: 10px;
-    font-size: 16px;
-}
-
-.gradio-label {
-    font-weight: bold;
-}
+.gradio-container{font-family:Arial,sans-serif;background:#f4f4f9;color:#333}
 """
+iface = gr.Interface(
+    fn=predict,
+    inputs=[gr.Radio([0, 1], label=f"Question {i}") for i in range(1, 11)] +
+           [gr.Number(label="Age", value=25),
+            gr.Radio(["m", "f"], label="Gender"),
+            gr.Radio(["yes", "no"], label="Jaundice at birth"),
+            gr.Radio(["yes", "no"], label="Family member with ASD"),
+            gr.Textbox(label="Country", placeholder="India"),
+            gr.Radio(["yes", "no"], label="Used app before"),
+            gr.Textbox(label="Who filled form", placeholder="Self / Parent / Doctor")],
+    outputs=gr.Label(label="Result"),
+    title="🧩 Autism Screening Tool",
+    description="Answer 10 quick questions and get an instant risk indicator.  \n**Not a diagnosis** – always consult a clinician.",
+    css=css,
+    allow_flagging="never"
+)
 
-# Launch the interface
-gr.Interface(
-    fn=predict_autism,
-    inputs=[gr.inputs.Slider(0, 10, label=f'A{i}') for i in range(1, 11)] + 
-           [gr.inputs.Slider(2.7, 89, label='Age'), 
-            gr.inputs.Radio(['Male', 'Female'], label='Gender'), 
-            gr.inputs.Dropdown(['Ethnicity1', 'Ethnicity2', 'Ethnicity3'], label='Ethnicity'), 
-            gr.inputs.Textbox(label='Country')],
-    outputs=gr.outputs.Label(num_top_classes=2, label='Prediction'),
-    title="Autism Screening Tool",
-    description="Enter the responses to the 10 screening questions (A1-A10), age, gender, ethnicity, and country. The model will predict the likelihood of Autism Spectrum Disorder.",
-    theme="default",
-    css=css
-).launch()
+if __name__ == "__main__":
+    iface.launch(server_name="0.0.0.0", server_port=7860)
